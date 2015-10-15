@@ -107,10 +107,11 @@ def rbc_capture(path):
 		cv2.drawContours(mask, [cnt],0,255,-1)
 
 	# write mask image to file
-	cv2.imwrite('mask.png', mask)
+	# cv2.imwrite('mask.png', mask)
 
 	# pass list and index to pandas 
 	coordinate_array = pd.Series(coordinates, list(range(len(coordinates))))
 	return coordinate_array	
+	return mask
 
 
