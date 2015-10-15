@@ -26,6 +26,15 @@ __author__    = 'Thomas Durant'
 __date__      = '10/14/2015'
 __pyver__     = '2.7'
 
+
+##############################################################################
+#Purpose
+#Create Mask and Coordinate array of rbcs 
+#Input: image
+#Output: Mask.png and pandas array of corresponding coordinates
+################################################################################
+
+
 ###############################################################################
 ######### Import
 ###############################################################################
@@ -36,6 +45,7 @@ import time
 import PIL
 
 import numpy as np
+import pandas as pd
 
 from time import strftime, gmtime
 from os import listdir
@@ -55,48 +65,52 @@ import cv2
 ######### Classes/Functions
 ###############################################################################
 	
-def rbc_capture():
-	image = rbcPath + test
+def rbc_capture(path):
+	
+	im = cv2.imread(path)
 
-	im = cv2.imread(image)
+	# color to gray
+	imgray = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+	
+	# blur
+	imgray = cv2.medianBlur(imgray, 5)
+	
+	# thresh image
+	ret,thresh = cv2.threshold(imgray,205,255,0)
 
-	test = im.copy()
-	test = cv2.cvtColor(test,cv2.COLOR_BGR2GRAY)
-	test = cv2.medianBlur(test, 5)
-	ret,thresh = cv2.threshold(test,205,255,0)
+	# find all contours
 	image, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
 
-	idx = 0 
-	rectParameters = []
+	# create mask image where all elements are zero (black image) with same size as source (1st param)
+	mask = np.zeros(imgray.shape,np.uint8) 
+
+	coordinates = []
+
+	# filter contours based on area
 	for h, cnt in enumerate(contours):
-	    
-	    area = cv2.contourArea(cnt)
-	    if area < 300:
-	        continue
-	    if area > 2000:
-	        continue
-	    if len(cnt) < 5:
-	        continue
-	    
-	    # pandas; original, mask, and coordinates
-	    x,y,w,h = cv2.boundingRect(cnt) 
-	    
-	    idx += 1
-	    # crop and save each object
-	    crop_img = im[y: y + h, x: x + w]
-	    cv2.imwrite('%s.png'%idx, crop_img)
-	    
-	    # build full list of rect params
-	    param = cv2.boundingRect(cnt) 
-	    rectParameters.append(param)
-	    
-	    # draw rectangles on image
-	    cv2.rectangle(im,(x,y),(x+w,y+h),(0,255,0),2)
+
+		area = cv2.contourArea(cnt)
+		if area < 300:
+			continue
+		if area > 2000:
+			continue
+		if len(cnt) < 5:
+			continue
+
+		# find coordinates for contour objects
+		x,y,w,h = cv2.boundingRect(cnt) 
+		xywh = (w,y,w,h)
+		# append coordinates to list
+		coordinates.append(xywh)
+
+		# draw contours to mask image
+		cv2.drawContours(mask, [cnt],0,255,-1)
+
+	# write mask image to file
+	cv2.imwrite('mask.png', mask)
+
+	# pass list and index to pandas 
+	coordinate_array = pd.Series(coordinates, list(range(len(coordinates))))
+	return coordinate_array	
 
 
-
-	# cv2.imshow("cropped", crop_img)
-	# cv2.waitKey(0)
-	    
-	cv2.imshow('img',im)
-	cv2.waitKey(0) 
